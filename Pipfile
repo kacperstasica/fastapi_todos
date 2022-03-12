@@ -1,0 +1,25 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+fastapi = "*"
+uvicorn = "*"
+sqlalchemy = "==1.4.*"
+python-multipart = "*"
+python-jose = "==3.3.*"
+Jinja2 = "==2.11.*"
+aiofiles = "==0.5.*"
+bcrypt = "==3.2.*"
+cryptography = "==35.0.*"
+passlib = {extras = ["bcrypt"], version = "*"}
+PyMySQL = "==1.0.*"
+pydantic = "*"
+email-validator = "*"
+
+[dev-packages]
+"flake8" = "*"
+
+[requires]
+python_version = "3.10"
