@@ -8,6 +8,7 @@ from database import engine, Base, SessionLocal
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
+from auth import get_user_exception, get_current_user
 from exceptions import http_exception
 
 
@@ -36,10 +37,27 @@ async def read_all(db: Session = Depends(get_db)):
     return db.query(Todos).order_by(desc(Todos.priority)).all()
 
 
+@app.get("/todos/user")
+async def read_all_by_user(
+        user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    if user is None:
+        raise get_user_exception()
+    return db.query(Todos).filter(Todos.owner_id == user['id']).all()
+
+
 @app.get("/todo/{todo_id}")
-async def get_todo(todo_id: int, db: Session = Depends(get_db)):
+async def read_todo(
+        todo_id: int,
+        user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    if user is None:
+        raise get_user_exception()
     todo_model = db.query(Todos)\
         .filter(Todos.id == todo_id)\
+        .filter(Todos.owner_id == user["id"])\
         .first()
     if todo_model is not None:
         return todo_model
