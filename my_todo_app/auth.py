@@ -1,11 +1,17 @@
-from fastapi import FastAPI, Depends, status, HTTPException
-from fastapi.security import OAuth2PasswordRequestForm
+from datetime import datetime, timedelta
+
+from fastapi import FastAPI, Depends, status
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
 from typing import Optional
 from models import Users
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine, Base
+
+import config
+from exceptions import token_exception, get_user_exception
 
 
 class CreateUser(BaseModel):
@@ -19,6 +25,8 @@ class CreateUser(BaseModel):
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 Base.metadata.create_all(bind=engine)
+
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
 
@@ -51,6 +59,32 @@ def authenticate_user(username: str, password: str, db):
     return user
 
 
+def create_access_token(
+        username: str,
+        user_id: int,
+        expires_delta: Optional[timedelta] = None
+):
+    encode = {"sub": username, "id": user_id}
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=15)
+    encode.update({"exp": expire})
+    return jwt.encode(encode, config.SECRET_KEY, algorithm=config.ALGORITHM)
+
+
+async def get_current_user(token: str = Depends(oauth2_bearer)):
+    try:
+        payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
+        username: str = payload.get("sub")
+        user_id: int = payload.get("id")
+        if not username or not user_id:
+            raise get_user_exception()
+        return {"username": username, "id": user_id}
+    except JWTError:
+        raise get_user_exception()
+
+
 @app.post("/create/user")
 async def create_new_user(create_user: CreateUser, db: Session = Depends(get_db)):
     create_user_model = Users()
@@ -80,5 +114,11 @@ async def login_for_access_token(
 ):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
-        raise HTTPException(detail="User not valid", status_code=status.HTTP_404_NOT_FOUND)
-    return "User Validated"
+        raise token_exception()
+
+    token = create_access_token(
+        username=user.username,
+        user_id=user.id,
+        expires_delta=timedelta(minutes=20)
+    )
+    return {"token": token}
