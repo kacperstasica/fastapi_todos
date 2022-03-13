@@ -1,5 +1,5 @@
 # Project
-config.env
+.env
 
 ### Flask ###
 instance/*
@@ -9,6 +9,7 @@ instance/*
 *.pot
 *.pyc
 __pycache__/
+*.db
 db.sqlite3
 db.sqlite3-journal
 
