@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import FastAPI, Depends, status
 from sqlalchemy import desc
 
-from models import Todos
-from database import engine, Base, SessionLocal
+import models
+from database import engine, SessionLocal
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 
@@ -14,7 +14,7 @@ from exceptions import http_exception
 
 app = FastAPI()
 
-Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine)
 
 
 def get_db():
@@ -34,7 +34,7 @@ class Todo(BaseModel):
 
 @app.get("/")
 async def read_all(db: Session = Depends(get_db)):
-    return db.query(Todos).order_by(desc(Todos.priority)).all()
+    return db.query(models.Todos).order_by(desc(models.Todos.priority)).all()
 
 
 @app.get("/todos/user")
@@ -44,7 +44,7 @@ async def read_all_by_user(
 ):
     if user is None:
         raise get_user_exception()
-    return db.query(Todos).filter(Todos.owner_id == user['id']).all()
+    return db.query(models.Todos).filter(models.Todos.owner_id == user['id']).all()
 
 
 @app.get("/todo/{todo_id}")
@@ -55,9 +55,9 @@ async def read_todo(
 ):
     if user is None:
         raise get_user_exception()
-    todo_model = db.query(Todos)\
-        .filter(Todos.id == todo_id)\
-        .filter(Todos.owner_id == user["id"])\
+    todo_model = db.query(models.Todos)\
+        .filter(models.Todos.id == todo_id)\
+        .filter(models.Todos.owner_id == user["id"])\
         .first()
     if todo_model is not None:
         return todo_model
@@ -72,7 +72,7 @@ async def create_todo(
 ):
     if user is None:
         raise get_user_exception()
-    todo_model = Todos()
+    todo_model = models.Todos()
     todo_model.title = todo.title
     todo_model.description = todo.description
     todo_model.priority = todo.priority
@@ -95,9 +95,9 @@ async def update_todo(
     if user is None:
         raise get_user_exception()
 
-    todo_model = db.query(Todos).\
-        filter(Todos.id == todo_id).\
-        filter(Todos.owner_id == user['id']).\
+    todo_model = db.query(models.Todos).\
+        filter(models.Todos.id == todo_id).\
+        filter(models.Todos.owner_id == user['id']).\
         first()
     if todo_model is None:
         raise http_exception()
@@ -113,14 +113,22 @@ async def update_todo(
 
 
 @app.delete("/{todo_id}")
-async def delete_todo(todo_id: int, db: Session = Depends(get_db)):
-    todo_model = db.query(Todos).\
-        filter(Todos.id == todo_id).\
+async def delete_todo(
+        todo_id: int,
+        user: dict = Depends(get_current_user),
+        db: Session = Depends(get_db)
+):
+    if user is None:
+        raise get_user_exception()
+
+    todo_model = db.query(models.Todos).\
+        filter(models.Todos.id == todo_id).\
+        filter(models.Todos.owner_id == user["id"]).\
         first()
     if todo_model is None:
         raise http_exception()
-    db.query(Todos).\
-        filter(Todos.id == todo_id).\
+    db.query(models.Todos).\
+        filter(models.Todos.id == todo_id).\
         delete()
     db.commit()
 

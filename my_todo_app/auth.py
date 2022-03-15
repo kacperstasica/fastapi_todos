@@ -5,11 +5,11 @@ from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from models import Users
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
-from database import SessionLocal, engine, Base
+from database import SessionLocal, engine
 
+import models
 import config
 from exceptions import token_exception, get_user_exception
 
@@ -24,7 +24,7 @@ class CreateUser(BaseModel):
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-Base.metadata.create_all(bind=engine)
+models.Base.metadata.create_all(bind=engine)
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="token")
 
@@ -48,8 +48,8 @@ def verify_password(plain_passowrd, hashed_password):
 
 
 def authenticate_user(username: str, password: str, db):
-    user = db.query(Users).\
-        filter(Users.username == username).\
+    user = db.query(models.Users).\
+        filter(models.Users.username == username).\
         first()
 
     if not user:
@@ -87,7 +87,7 @@ async def get_current_user(token: str = Depends(oauth2_bearer)):
 
 @app.post("/create/user")
 async def create_new_user(create_user: CreateUser, db: Session = Depends(get_db)):
-    create_user_model = Users()
+    create_user_model = models.Users()
     create_user_model.username = create_user.username
     create_user_model.email = create_user.email
     create_user_model.first_name = create_user.first_name
