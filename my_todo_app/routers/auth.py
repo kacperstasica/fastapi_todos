@@ -43,8 +43,8 @@ def get_password_hash(password):
     return bcrypt_context.hash(password)
 
 
-def verify_password(plain_passowrd, hashed_password):
-    return bcrypt_context.verify(plain_passowrd, hashed_password)
+def verify_password(plain_password, hashed_password):
+    return bcrypt_context.verify(plain_password, hashed_password)
 
 
 def authenticate_user(username: str, password: str, db):
