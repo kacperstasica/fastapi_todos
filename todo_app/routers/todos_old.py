@@ -1,6 +1,10 @@
+import sys
+sys.path.append("..")
+
 from typing import Optional
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, status, Request
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc
 
 import models
@@ -21,6 +25,8 @@ router = APIRouter(
 
 models.Base.metadata.create_all(bind=engine)
 
+templates = Jinja2Templates(directory="templates")
+
 
 def get_db():
     db = SessionLocal()
@@ -35,6 +41,11 @@ class Todo(BaseModel):
     description: Optional[str]
     priority: int = Field(gt=0, lt=6, description="Priority must be between 1 and 5")
     complete: bool
+
+
+@router.get("/test")
+async def test(request: Request):
+    return templates.TemplateResponse("home.html", {"request": request})
 
 
 @router.get("/")
