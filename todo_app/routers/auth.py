@@ -97,20 +97,23 @@ def create_access_token(
     return jwt.encode(encode, config.SECRET_KEY, algorithm=config.ALGORITHM)
 
 
-async def get_current_user(token: str = Depends(oauth2_bearer)):
+async def get_current_user(request: Request) -> dict | None:
     try:
+        token = request.cookies.get("access_token")
+        if token is None:
+            return
         payload = jwt.decode(token, config.SECRET_KEY, algorithms=[config.ALGORITHM])
         username: str = payload.get("sub")
         user_id: int = payload.get("id")
-        if not username or not user_id:
-            raise get_user_exception()
+        if username is None or user_id is None:
+            return
         return {"username": username, "id": user_id}
     except JWTError:
         raise get_user_exception()
 
 
 @router.post("/create/user")
-async def create_new_user(create_user: CreateUser, db: Session = Depends(get_db)):
+async def create_new_user(create_user: CreateUser, db: Session = Depends(get_db)) -> dict:
     create_user_model = models.Users()
     create_user_model.username = create_user.username
     create_user_model.email = create_user.email
