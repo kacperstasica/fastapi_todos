@@ -1,10 +1,12 @@
 import sys
+
 sys.path.append("..")
 
 from datetime import datetime, timedelta
 
 from starlette.responses import RedirectResponse
 from fastapi import Depends, status, APIRouter, Request, Response
+from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -175,6 +177,14 @@ async def login(
     except HTTPException:
         msg = "Unknown Error"
         return templates.TemplateResponse("login.html", {"request": request, "msg": msg})
+
+
+@router.get("/logout", response_class=HTMLResponse)
+async def logout(request: Request):
+    msg = "Logout Successful"
+    response = templates.TemplateResponse("login.html", {"request": request, "msg": msg})
+    response.delete_cookie(key="access")
+    return response
 
 
 @router.get("/register", response_class=HTMLResponse)
