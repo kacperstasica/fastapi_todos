@@ -38,7 +38,7 @@ def get_db():
 
 class Todo(BaseModel):
     title: str
-    description: Optional[str]
+    description: str | None
     priority: int = Field(gt=0, lt=6, description="Priority must be between 1 and 5")
     complete: bool
 

@@ -42,7 +42,11 @@ async def read_all_by_user(
         request: Request,
         db: Session = Depends(get_db),
 ):
-    todos = db.query(models.Todos).filter(models.Todos.owner_id == 1).all()
+    todos = db.query(models.Todos).\
+        filter(models.Todos.owner_id == 1).\
+        order_by(desc(models.Todos.priority)).\
+        all()
+
     return templates.TemplateResponse(
         'home.html',
         {

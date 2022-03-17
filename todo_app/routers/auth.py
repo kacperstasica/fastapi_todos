@@ -3,13 +3,13 @@ sys.path.append("..")
 
 from datetime import datetime, timedelta
 
-from fastapi import Depends, status, APIRouter, Request
+from starlette.responses import RedirectResponse
+from fastapi import Depends, status, APIRouter, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from jose import jwt, JWTError
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
 from database import SessionLocal, engine
@@ -24,7 +24,7 @@ templates = Jinja2Templates(directory="templates")
 
 class CreateUser(BaseModel):
     username: str
-    email: Optional[EmailStr]
+    email: EmailStr | None
     first_name: str
     last_name: str
     password: str
@@ -41,6 +41,18 @@ router = APIRouter(
     tags=["auth"],
     responses={status.HTTP_401_UNAUTHORIZED: {"user": "Not authorized"}}
 )
+
+
+class LoginForm:
+    def __init__(self, request: Request) -> None:
+        self.request: Request = request
+        self.username: str | None = None
+        self.password: str | None = None
+
+    async def create_oauth_form(self) -> None:
+        form = await self.request.form()
+        self.username = form.get("email")
+        self.password = form.get("password")
 
 
 def get_db():
@@ -74,7 +86,7 @@ def authenticate_user(username: str, password: str, db):
 def create_access_token(
         username: str,
         user_id: int,
-        expires_delta: Optional[timedelta] = None
+        expires_delta: timedelta | None = None
 ):
     encode = {"sub": username, "id": user_id}
     if expires_delta:
@@ -121,24 +133,45 @@ async def create_new_user(create_user: CreateUser, db: Session = Depends(get_db)
 
 @router.post("/token")
 async def login_for_access_token(
+        response: Response,
         form_data: OAuth2PasswordRequestForm = Depends(),
         db: Session = Depends(get_db)
 ):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
-        raise token_exception()
-
+        return False
     token = create_access_token(
         username=user.username,
         user_id=user.id,
-        expires_delta=timedelta(minutes=20)
+        expires_delta=timedelta(minutes=60)
     )
-    return {"token": token}
+    response.set_cookie(key="access_token", value=token, httponly=True)
+    return True
 
 
 @router.get("/", response_class=HTMLResponse)
 async def authentication_page(request: Request):
     return templates.TemplateResponse('login.html', {"request": request})
+
+
+@router.post("/", response_class=HTMLResponse)
+async def login(
+        request: Request,
+        db: Session = Depends(get_db),
+):
+    try:
+        form = LoginForm(request)
+        await form.create_oauth_form()
+        response = RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
+
+        validate_user_cookie = await login_for_access_token(response=response, form_data=form, db=db)
+        if not validate_user_cookie:
+            msg = "Incorrect Username or Password"
+            return templates.TemplateResponse("login.html", {"request": request, "msg": msg})
+        return response
+    except HTTPException:
+        msg = "Unknown Error"
+        return templates.TemplateResponse("login.html", {"request": request, "msg": msg})
 
 
 @router.get("/register", response_class=HTMLResponse)
