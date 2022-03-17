@@ -3,7 +3,9 @@ sys.path.append("..")
 
 from typing import Optional
 
-from fastapi import APIRouter, Depends, status, Request
+from starlette import status
+from starlette.responses import RedirectResponse
+from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc
@@ -19,7 +21,7 @@ from .auth import get_current_user
 router = APIRouter(
     prefix="/todos",
     tags=["todos"],
-    responses={status.HTTP_404_NOT_FOUND: {"description": "Not found"}}
+    responses={404: {"description": "Not found"}}
 )
 
 models.Base.metadata.create_all(bind=engine)
@@ -41,8 +43,6 @@ async def read_all_by_user(
         db: Session = Depends(get_db),
 ):
     todos = db.query(models.Todos).filter(models.Todos.owner_id == 1).all()
-    todos_owners = [todo.id for todo in todos]
-    print(todos_owners, '<-----')
     return templates.TemplateResponse(
         'home.html',
         {
@@ -57,6 +57,85 @@ async def add_new_todo(request: Request):
     return templates.TemplateResponse('add-todo.html', {"request": request})
 
 
+@router.post("/add-todo", response_class=HTMLResponse)
+async def create_todo(
+        request: Request,
+        title: str = Form(...),
+        description: str = Form(...),
+        priority: int = Form(...),
+        db: Session = Depends(get_db),
+):
+    todo_model = models.Todos()
+    todo_model.title = title
+    todo_model.description = description
+    todo_model.priority = priority
+    todo_model.complete = False
+    todo_model.owner_id = 1
+    db.add(todo_model)
+    db.commit()
+
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
+
+
 @router.get("/edit-todo/{todo_id}", response_class=HTMLResponse)
-async def edit_todo(request: Request):
-    return templates.TemplateResponse('edit-todo.html', {"request": request})
+async def edit_todo(
+        request: Request,
+        todo_id: int,
+        db: Session = Depends(get_db),
+):
+    todo = db.query(models.Todos).filter(models.Todos.id == todo_id).first()
+    return templates.TemplateResponse('edit-todo.html', {"request": request, "todo": todo})
+
+
+@router.post("/edit-todo/{todo_id}", response_class=HTMLResponse)
+async def edit_todo_commit(
+        request: Request,
+        todo_id: int,
+        title: str = Form(...),
+        description: str = Form(...),
+        priority: int = Form(...),
+        db: Session = Depends(get_db),
+):
+    todo_model = db.query(models.Todos).filter(models.Todos.id == todo_id).first()
+    todo_model.title = title
+    todo_model.description = description
+    todo_model.priority = priority
+
+    db.add(todo_model)
+    db.commit()
+
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
+
+
+@router.get("/delete/{todo_id}")
+async def delete_todo(
+        request: Request,
+        todo_id: int,
+        db: Session = Depends(get_db),
+):
+    todo_model = db.query(models.Todos).\
+        filter(models.Todos.id == todo_id).\
+        filter(models.Todos.owner_id == 1).\
+        first()
+
+    if todo_model is None:
+        return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
+
+    db.query(models.Todos).filter(models.Todos.id == todo_id).delete()
+    db.commit()
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
+
+
+@router.get("/complete/{todo_id}", response_class=HTMLResponse)
+async def complete_todo(
+        request: Request,
+        todo_id: int,
+        db: Session = Depends(get_db)
+):
+    todo = db.query(models.Todos).filter(models.Todos.id == todo_id).first()
+    todo.complete = not todo.complete
+
+    db.add(todo)
+    db.commit()
+
+    return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)

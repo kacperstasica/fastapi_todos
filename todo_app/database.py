@@ -16,4 +16,3 @@ Base = declarative_base()
 
 # mysql - if you want to use it, you should install pymysql
 # SQLALCHEMY_DATABASE_URL = "mysql+pymysql://username:password@127.0.0.1:3306/db_name"
-  
