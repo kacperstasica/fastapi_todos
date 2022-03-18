@@ -7,7 +7,12 @@
                 Register
             </div>
             <div class="card-body">
-                <form>
+                {% if msg %}
+                    <div class="alert alert-danger" role="alert">
+                        {{ msg }}
+                    </div>
+                {% endif %}
+                <form method="POST" action="/auth/register">
                     <div class="form-row">
                         <div class="form-group col-md-6">
                             <label>Email</label>
@@ -22,11 +27,11 @@
                     <div class="form-row">
                         <div class="form-group col-md-6">
                             <label>First Name</label>
-                            <input type="text" class="form-control" name="firstname">
+                            <input type="text" class="form-control" name="first_name">
                         </div>
                         <div class="form-group col-md-6">
                             <label>Last Name</label>
-                            <input type="text" class="form-control" name="lastname">
+                            <input type="text" class="form-control" name="last_name">
                         </div>
                     </div>
                     <div class="form-group">
@@ -46,7 +51,7 @@
                 </form>
             </div>
             <div class="card-footer text-muted">
-                <a href="#"> Already have an account? </a>
+                <a href="/auth"> Already have an account? </a>
             </div>
         </div>
     </div>

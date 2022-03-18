@@ -5,7 +5,7 @@ sys.path.append("..")
 from datetime import datetime, timedelta
 
 from starlette.responses import RedirectResponse
-from fastapi import Depends, status, APIRouter, Request, Response
+from fastapi import Depends, status, APIRouter, Request, Response, Form
 from fastapi.exceptions import HTTPException
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi.responses import HTMLResponse
@@ -46,7 +46,7 @@ router = APIRouter(
 
 
 class LoginForm:
-    def __init__(self, request: Request) -> None:
+    def __init__(self, request: Request):
         self.request: Request = request
         self.username: str | None = None
         self.password: str | None = None
@@ -190,3 +190,41 @@ async def logout(request: Request):
 @router.get("/register", response_class=HTMLResponse)
 async def register(request: Request):
     return templates.TemplateResponse('register.html', {"request": request})
+
+
+@router.post("/register", response_class=HTMLResponse)
+async def register_user(
+        request: Request,
+        email: EmailStr = Form(...),
+        username: str = Form(...),
+        first_name: str = Form(...),
+        last_name: str = Form(...),
+        password: str = Form(...),
+        password2: str = Form(...),
+        db: Session = Depends(get_db),
+):
+    validation_1 = db.query(models.Users)\
+        .filter(models.Users.username == username)\
+        .first()
+
+    validation_2 = db.query(models.Users)\
+        .filter(models.Users.email == email)\
+        .first()
+    
+    if password != password2 or validation_1 is not None or validation_2 is not None:
+        msg = "Invalid registration request"
+        return templates.TemplateResponse("register.html", {"request": request, "msg": msg})
+
+    user_model = models.Users()
+    user_model.username = username
+    user_model.email = email
+    user_model.first_name = first_name
+    user_model.last_name = last_name
+    user_model.hashed_password = get_password_hash(password)
+    user_model.is_active = True
+
+    db.add(user_model)
+    db.commit()
+
+    msg = "User successfully created"
+    return templates.TemplateResponse("login.html", {"request": request, "msg": msg})
