@@ -179,7 +179,7 @@ async def register_user(
         .filter(models.Users.email == email)\
         .first()
 
-    if validate_password(password, password2) or validation_1 is not None or validation_2 is not None:
+    if password != password2 or validation_1 is not None or validation_2 is not None:
         msg = "Invalid registration request"
         return templates.TemplateResponse("register.html", {"request": request, "msg": msg})
 
@@ -196,10 +196,3 @@ async def register_user(
 
     msg = "User successfully created"
     return templates.TemplateResponse("login.html", {"request": request, "msg": msg})
-
-
-def validate_password(password: str, password2: str):
-    if password != password2:
-        return False
-    elif len(password) < 8:
-        return False
