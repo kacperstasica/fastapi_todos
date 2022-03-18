@@ -1,9 +1,8 @@
 from pathlib import Path
 
 from starlette.config import Config
-from starlette.datastructures import Secret
 
-BASE_DIR = Path(__file__).parent.parent.parent
+BASE_DIR = Path(__file__).parent
 
 config = Config(".env")
 
