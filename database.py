@@ -2,7 +2,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:postgres@localhost/todo_db"
+import config
+
+SQLALCHEMY_DATABASE_URL = config.DATABASE_URL
 
 
 engine = create_engine(

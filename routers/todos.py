@@ -1,6 +1,3 @@
-import sys
-sys.path.append("..")
-
 from starlette import status
 from starlette.responses import RedirectResponse
 from fastapi import APIRouter, Depends, Request, Form

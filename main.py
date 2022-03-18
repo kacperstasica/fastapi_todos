@@ -19,6 +19,11 @@ app.include_router(auth.router)
 app.include_router(todos.router)
 
 
+@app.get("/health")
+async def health():
+    return {"status": status.HTTP_200_OK}
+
+
 @app.get("/")
 async def root():
     return RedirectResponse(url="/todos", status_code=status.HTTP_302_FOUND)
